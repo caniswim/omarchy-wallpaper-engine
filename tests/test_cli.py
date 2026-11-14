@@ -61,6 +61,20 @@ elif args[:2] == ['app','download']:
     def calls(self):
         return [json.loads(line) for line in self.log.read_text().splitlines()]
 
+    def test_explicit_renderer_does_not_depend_on_path_precedence(self):
+        renderer = self.base / 'reviewed-renderer'
+        renderer.write_text('#!/bin/sh\nexit 0\n')
+        renderer.chmod(0o755)
+        config = we.HOME / '.config/omarchy-we/settings.json'
+        config.parent.mkdir(parents=True)
+        config.write_text(json.dumps({'renderer': str(renderer)}))
+        self.assertEqual(we.need(we.renderer_command()), str(renderer))
+        self.assertEqual(we.doctor()['renderer_path'], str(renderer))
+        renderer.unlink()
+        self.assertFalse(we.doctor()['renderer'])
+        with self.assertRaises(RuntimeError):
+            we.need(we.renderer_command())
+
     def test_browse_passes_prefilled_search_as_json_argument(self):
         query = 'nature "quoted" $(not-a-command)'
         with patch.object(we, 'run') as run:

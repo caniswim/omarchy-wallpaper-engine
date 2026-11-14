@@ -62,6 +62,17 @@ def need(binary):
     return found
 
 
+def renderer_command():
+    config_home = Path(os.environ.get('XDG_CONFIG_HOME', HOME / '.config'))
+    settings = read_json(config_home / 'omarchy-we/settings.json', {})
+    if not isinstance(settings, dict):
+        raise RuntimeError('Invalid omarchy-we/settings.json.')
+    command = os.environ.get('OMARCHY_WE_RENDERER') or settings.get('renderer', 'linux-wallpaperengine')
+    if not isinstance(command, str) or not command or '\x00' in command:
+        raise RuntimeError('Configured renderer must be an executable path or command name.')
+    return command
+
+
 @contextlib.contextmanager
 def lock(name):
     STATE.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -456,7 +467,7 @@ def apply(query):
     row = resolve(query)
     if row['type'] not in ('scene', 'video'):
         raise RuntimeError('Only Scene and Video wallpapers are supported.')
-    binary = need('linux-wallpaperengine')
+    binary = need(renderer_command())
     shared = assets()
     if row['type'] == 'scene' and not shared:
         raise RuntimeError('Shared scene assets are missing. Use “Scene assets” or run omarchy-we assets after signing in.')
@@ -524,7 +535,7 @@ def current():
 
 
 def doctor():
-    return {'renderer': bool(shutil.which('linux-wallpaperengine')), 'tapline': bool(shutil.which('tapline')),
+    return {'renderer': bool(shutil.which(renderer_command())), 'renderer_path': shutil.which(renderer_command()), 'tapline': bool(shutil.which('tapline')),
             'qrencode': bool(shutil.which('qrencode')), 'assets': str(assets()) if assets() else None,
             'library': str(managed_root()), 'count': len(library()), 'current': current()}
 
