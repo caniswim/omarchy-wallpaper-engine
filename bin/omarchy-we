@@ -221,19 +221,53 @@ def item_id(value):
     return value
 
 
+ASSET_REQUIRED_FILES = (
+    'models/util/solidlayer.json',
+    'materials/util/solidlayer.json',
+    'shaders/genericimage.vert',
+    'shaders/genericimage.frag',
+)
+
+
+def assets_complete(path):
+    # Directory creation happens before Steam transfers content. Require real,
+    # nonempty baseline model/material/shader files, not just those directories.
+    try:
+        return all((path / name).is_file() and (path / name).stat().st_size > 0
+                   for name in ASSET_REQUIRED_FILES)
+    except OSError:
+        return False
+
+
 def assets():
     candidates = [DATA / 'engine/assets']
     if os.environ.get('OMARCHY_WE_ASSETS'):
         candidates.insert(0, Path(os.environ['OMARCHY_WE_ASSETS']).expanduser())
     candidates += [p / 'steamapps/common/wallpaper_engine/assets' for p in steam_roots()]
-    return next((p for p in candidates if (p / 'shaders').is_dir() and (p / 'materials').is_dir()), None)
+    return next((p for p in candidates if assets_complete(p)), None)
 
 
 def fetch_assets():
     with lock('download'):
-        tap('app', 'download', APP, '--dir', DATA / 'engine', '--path', 'assets', '--json', timeout=3600)
-        if not assets():
-            raise RuntimeError('Steam did not deliver the required shaders/materials. Sign in with the account that owns Wallpaper Engine, then retry. See the tapline compatibility patch in deps/.')
+        destination = DATA / 'engine'
+        staging = DATA / '.engine.partial'
+        report = events(tap('app', 'download', APP, '--dir', staging, '--path', 'assets', '--json', timeout=3600))
+        completed = any(row.get('event') == 'completed' and str(row.get('app')) == APP for row in report)
+        if not completed or not assets_complete(staging / 'assets'):
+            raise RuntimeError('Shared scene assets are incomplete: required model/material/shader files are missing or empty. Sign in with the Steam account that owns Wallpaper Engine and retry Scene assets. Existing assets were preserved. See deps/tapline-owned-apps.patch if this repeats.')
+        backup = DATA / '.engine.previous'
+        if backup.exists():
+            shutil.rmtree(backup)
+        if destination.exists():
+            destination.rename(backup)
+        try:
+            staging.rename(destination)
+        except OSError:
+            if backup.exists():
+                backup.rename(destination)
+            raise
+        if backup.exists():
+            shutil.rmtree(backup)
     return {'event': 'completed', 'message': 'Shared scene assets ready.'}
 
 

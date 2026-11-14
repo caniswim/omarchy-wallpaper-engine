@@ -37,7 +37,7 @@ For development, put this repository in the user plugin directory with its manif
 4. Search Workshop, select a tile and choose **Download / update**.
 5. Choose **Apply**. **Library** shows downloaded content; **Stop live wallpaper** restores the previous background and disables login/theme restoration until another wallpaper is applied.
 
-Searches and thumbnails load only when you ask to search. There is no background polling of Steam. You can close the gallery while an operation finishes; use **Cancel** to stop it. Downloads have a one-hour timeout; Steam errors appear in the gallery. Partial downloads stay hidden and can be resumed by retrying the same item.
+Searches and thumbnails load only when you ask to search. There is no background polling of Steam. You can close the gallery while an operation finishes; use **Cancel** to stop it. Downloads have a one-hour timeout; Steam errors appear in the gallery. Partial downloads stay hidden and can be resumed by retrying the same item. Shared assets also download into staging: only a successful Steam completion with nonempty baseline model, material and shader files replaces the current assets. Empty managed folders cannot shadow a valid Steam installation.
 
 Downloaded wallpapers appear in `~/.local/share/omarchy-we/workshop`, shared assets in `~/.local/share/omarchy-we/engine/assets`, thumbnails in `~/.cache/omarchy-we/previews`, and renderer diagnostics in `~/.local/state/omarchy-we/renderer.log`. Standard XDG data/state/cache locations are honored. Existing Steam Workshop libraries, including paths in Steam's `libraryfolders.vdf`, are also discovered.
 

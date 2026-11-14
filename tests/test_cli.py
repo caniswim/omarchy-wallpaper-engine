@@ -44,8 +44,9 @@ elif args[:2] == ['workshop','download']:
  print(json.dumps({'event':'workshop_completed'}))
 elif args[:2] == ['app','download']:
  p=Path(args[args.index('--dir')+1])/'assets'
- (p/'shaders').mkdir(parents=True,exist_ok=True);(p/'materials').mkdir(exist_ok=True)
- print(json.dumps({'event':'completed'}))
+ for name in ('models/util/solidlayer.json','materials/util/solidlayer.json','shaders/genericimage.vert','shaders/genericimage.frag'):
+  file=p/name;file.parent.mkdir(parents=True,exist_ok=True);file.write_text('content')
+ print(json.dumps({'event':'completed','app':431960}))
 ''')
         fake.chmod(0o755)
         self.env = patch.dict(os.environ, {'PATH': str(self.bin) + ':' + os.environ['PATH'], 'CALLS': str(self.log), 'XDG_CONFIG_HOME': str(we.HOME / '.config')}, clear=False)
@@ -103,6 +104,42 @@ elif args[:2] == ['app','download']:
         self.assertEqual(call[call.index('--path')+1], 'assets')
         self.assertIsNotNone(we.assets())
 
+    def test_empty_managed_assets_do_not_shadow_valid_steam_assets(self):
+        managed = we.DATA / 'engine/assets'
+        (managed / 'shaders').mkdir(parents=True)
+        (managed / 'materials').mkdir()
+        steam = self.base / 'Steam'
+        shared = steam / 'steamapps/common/wallpaper_engine/assets'
+        for name in we.ASSET_REQUIRED_FILES:
+            we.write(shared / name, 'content')
+        with patch.object(we, 'steam_roots', return_value=[steam]):
+            self.assertEqual(we.assets(), shared)
+        (shared / we.ASSET_REQUIRED_FILES[0]).write_text('')
+        self.assertFalse(we.assets_complete(shared))
+
+    def test_incomplete_staging_cannot_report_success_or_replace_existing_assets(self):
+        shared = we.DATA / 'engine/assets'
+        for name in we.ASSET_REQUIRED_FILES:
+            we.write(shared / name, 'old valid content')
+        def fake_download(*args, **kwargs):
+            (we.DATA / '.engine.partial/assets/shaders').mkdir(parents=True)
+            return json.dumps({'event':'completed','app':431960})
+        with patch.object(we, 'tap', side_effect=fake_download):
+            with self.assertRaisesRegex(RuntimeError, 'incomplete'):
+                we.fetch_assets()
+        self.assertEqual((shared / we.ASSET_REQUIRED_FILES[0]).read_text(), 'old valid content')
+        self.assertFalse((we.DATA / '.engine.previous').exists())
+
+    def test_asset_download_replaces_only_after_validated_completion(self):
+        shared = we.DATA / 'engine/assets'
+        we.write(shared / 'old-unused-file', 'old')
+        we.fetch_assets()
+        self.assertTrue(we.assets_complete(shared))
+        self.assertFalse((shared / 'old-unused-file').exists())
+        self.assertFalse((we.DATA / '.engine.partial').exists())
+        self.assertFalse((we.DATA / '.engine.previous').exists())
+        self.assertEqual(self.calls()[0][self.calls()[0].index('--dir')+1], str(we.DATA / '.engine.partial'))
+
     def test_empty_library_and_doctor_need_no_steam_install(self):
         self.assertEqual(we.library(), [])
         self.assertEqual(we.doctor()['count'], 0)
@@ -152,8 +189,8 @@ elif args[:2] == ['app','download']:
         folder.mkdir(parents=True)
         (folder / 'project.json').write_text(json.dumps({'type':'scene','title':'example'}))
         shared = we.DATA / 'engine/assets'
-        (shared / 'shaders').mkdir(parents=True)
-        (shared / 'materials').mkdir()
+        for name in we.ASSET_REQUIRED_FILES:
+            we.write(shared / name, 'content')
         renderer = self.bin / 'linux-wallpaperengine'
         renderer.write_text('#!/usr/bin/env python3\nimport time\ntime.sleep(30)\n')
         renderer.chmod(0o755)
