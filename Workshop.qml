@@ -25,7 +25,14 @@ Item {
 
     function open(payload) {
         opened = true
-        if (!busy) loadLibrary()
+        let request = {}
+        try { request = typeof payload === "string" ? JSON.parse(payload) : (payload || {}) } catch (e) {}
+        if (!busy) {
+            if (typeof request.query === "string" && request.query.trim()) {
+                query.text = request.query.slice(0, 200)
+                search(1)
+            } else loadLibrary()
+        }
         Qt.callLater(function() { query.forceActiveFocus() })
     }
     function close() { opened = false }

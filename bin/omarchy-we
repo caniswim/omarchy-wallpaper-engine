@@ -495,8 +495,8 @@ def doctor():
             'library': str(managed_root()), 'count': len(library()), 'current': current()}
 
 
-def open_ui(dial=False):
-    payload = json.dumps({'view': 'dial' if dial else 'workshop'})
+def open_ui(query='', dial=False):
+    payload = json.dumps({'view': 'dial' if dial else 'workshop', 'query': query[:200]})
     run(['omarchy-shell', 'shell', 'summon', PLUGIN, payload], timeout=10)
 
 
@@ -517,7 +517,7 @@ def main(argv=None):
         emit({'ipc':1, 'tool':'omarchy-we', 'commands':['version','entries','current','set','stop','picker','search','download','login','assets','doctor']})
         return
     if command in ('browse', 'menu', 'omatrix'):
-        open_ui(command == 'omatrix')
+        open_ui(value, command == 'omatrix')
         return
     if command == 'login':
         login(args.json)

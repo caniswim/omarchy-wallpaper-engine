@@ -60,6 +60,17 @@ elif args[:2] == ['app','download']:
     def calls(self):
         return [json.loads(line) for line in self.log.read_text().splitlines()]
 
+    def test_browse_passes_prefilled_search_as_json_argument(self):
+        query = 'nature "quoted" $(not-a-command)'
+        with patch.object(we, 'run') as run:
+            we.main(['browse', query])
+        argv = run.call_args.args[0]
+        self.assertEqual(argv[:4], ['omarchy-shell','shell','summon',we.PLUGIN])
+        self.assertEqual(json.loads(argv[4]), {'view':'workshop', 'query':query})
+        with patch.object(we, 'run') as run:
+            we.main(['browse'])
+        self.assertEqual(json.loads(run.call_args.args[0][4])['query'], '')
+
     def test_search_literal_arguments_and_numbered_pagination(self):
         query = '$(touch /tmp/pwned) <img> "quote"'
         result = we.search(query, 2)

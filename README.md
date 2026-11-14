@@ -58,6 +58,7 @@ The library must be inside that mount. The plugin refuses to use an unavailable 
 
 ```bash
 omarchy-we browse                    # native gallery (menu/omatrix are aliases)
+omarchy-we browse "nature"           # open gallery and search immediately
 omarchy-we search "ocean" --page 1 --json
 omarchy-we login                     # terminal QR approval
 omarchy-we account                   # current tapline account (network request)
