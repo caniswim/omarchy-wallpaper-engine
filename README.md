@@ -54,6 +54,8 @@ Create `~/.config/omarchy-we/settings.json` with an absolute library path and a 
 
 The library must be inside that mount. The plugin refuses to use an unavailable disk, so it cannot silently fill the system disk underneath an unmounted path. Mount and repair the disk through your system tools first. Shared engine assets remain in the user's data directory. Settings take effect on the next command or gallery reload.
 
+To select a custom renderer build, add `"renderer": "/absolute/path/to/linux-wallpaperengine"` to the same settings file. `OMARCHY_WE_RENDERER` overrides that setting. An unavailable explicit renderer reports an error instead of silently choosing a different build from `PATH`; `omarchy-we doctor` reports the selected executable as `renderer_path`.
+
 ### CLI
 
 ```bash
