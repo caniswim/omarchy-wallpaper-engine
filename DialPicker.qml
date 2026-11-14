@@ -149,6 +149,7 @@ Item {
           }
         }
         Text {
+          textFormat: Text.PlainText
           anchors { left: parent.left; bottom: parent.bottom; margins: 16 }
           width: parent.width - 150
           text: { var it = root.selectedItem(); return it ? it.title : "" }
@@ -161,6 +162,7 @@ Item {
           color: "#990a0c10"; border.width: 1
           border.color: { var it = root.selectedItem(); return (it && it.type === "scene") ? root.accent : (it && it.type === "video") ? "#274257" : "#5a2a2a" }
           Text {
+          textFormat: Text.PlainText
             id: chip; anchors.centerIn: parent
             text: { var it = root.selectedItem(); return it ? String(it.type).toUpperCase() : "" }
             font.pixelSize: 11; font.letterSpacing: 1.5
@@ -242,6 +244,7 @@ Item {
               GradientStop { position: 1.0; color: "#d9060709" }
             }
             Text {
+          textFormat: Text.PlainText
               anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 6 }
               text: card.modelData.title
               color: "#dfe3ea"; font.pixelSize: 11; elide: Text.ElideRight
@@ -265,12 +268,14 @@ Item {
 
     // wordmark — top center
     Text {
+          textFormat: Text.PlainText
       anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: parent.height * 0.03 }
       text: "OMATRIX"; color: "#eceef2"; font.pixelSize: 24; font.weight: Font.Bold; font.letterSpacing: 8; font.family: "monospace"
     }
 
     // HUD hint
     Text {
+          textFormat: Text.PlainText
       anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 18 }
       text: "◄ ►  or scroll to spin    ·    Enter apply    ·    Esc close"
       color: "#7f8593"; font.pixelSize: 13; font.letterSpacing: 1.2; font.family: "monospace"

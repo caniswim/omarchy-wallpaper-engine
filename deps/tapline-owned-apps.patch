@@ -1,0 +1,12 @@
+diff --git a/crates/tapline-cli/src/run.rs b/crates/tapline-cli/src/run.rs
+--- a/crates/tapline-cli/src/run.rs
++++ b/crates/tapline-cli/src/run.rs
+@@ -192,7 +192,7 @@ async fn download(
+     let defaults = InstallOptions::default();
+     let concurrency = concurrency.unwrap_or(defaults.concurrency);
+ 
+-    let mut session = Session::anonymous_shared(tapline::Shared::new(concurrency))
++    let mut session = Session::automatic_shared(None, tapline::Shared::new(concurrency))
+         .await
+         .map_err(|e| e.to_string())?;
+     let options = InstallOptions {

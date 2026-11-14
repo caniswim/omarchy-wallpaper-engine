@@ -1,176 +1,99 @@
-# omarchy-wallpaper-engine
+# Wallpaper Engine Workshop for Omarchy
 
-> Live [Wallpaper Engine](https://store.steampowered.com/app/431960/Wallpaper_Engine/) wallpapers on [Omarchy](https://omarchy.org/).
+Search the Steam Workshop, sign in with Steam's mobile QR approval, download wallpapers and apply them from **Omarchy → Style → Wallpaper Engine**. The native Quickshell gallery follows your Omarchy colors and supports English and Brazilian Portuguese.
 
-Use your Steam **Wallpaper Engine** wallpapers — the animated *scene* and *video* ones — as **live wallpapers** on Omarchy, picked from **Omatrix**, an Omnitrix-style dial.
-
-![Omatrix](preview.png)
-
-Omarchy draws its wallpaper through the Quickshell shell as a static image. This project renders your Wallpaper Engine content on the Hyprland background layer with [`linux-wallpaperengine`](https://github.com/Almamu/linux-wallpaperengine) and moves Omarchy's own background out of the way, so the animation shows through — and it survives theme switches and reboots. Nothing under `/usr/share/omarchy` is ever touched.
-
-## Features
-
-- 🎡 **Omatrix** — a semicircular dial picker (spin, click to apply) that lands under **menu → Style**.
-- 🖼️ Live *scene* and *video* wallpapers on the desktop, all monitors.
-- 🔁 Survives theme changes and reboots (auto-restored on login).
-- 🧰 A scriptable `omarchy-we` CLI, plus a stable [IPC surface](#integration-ipc-for-bars--shell-plugins) for other bars/shells.
-- 🧩 Installs as a first-class Omarchy plugin, or from a plain clone.
-
-## Requirements
-
-- An **Omarchy** system (Hyprland + the Quickshell shell).
-- **Wallpaper Engine** on Steam, with some wallpapers subscribed (they live under `~/.local/share/Steam/steamapps/workshop/content/431960/`).
-- `linux-wallpaperengine-git` from the AUR (an AUR helper like `yay`/`paru`).
+A Wallpaper Engine **Steam license** is required for protected content and shared scene assets. You do **not** need to install or run the official Windows Wallpaper Engine application. This integration uses [tapline](https://github.com/UnhingedSoftware/tapline) to talk to Steam and [linux-wallpaperengine](https://github.com/Almamu/linux-wallpaperengine) to render Scene and Video projects. Some scenes use effects the Linux renderer does not implement; Web and Application projects are not supported.
 
 ## Install
 
-**As an Omarchy plugin (recommended):**
+Requirements: Omarchy with the native Quickshell shell, Python 3, `qrencode`, `tapline`, and `linux-wallpaperengine`. On Arch/Omarchy, the renderer package is `linux-wallpaperengine-git` from AUR; `qrencode` is in the official repositories.
+
+The tested tapline revision is `f54136611519bef50cf31336e0c28a78eb175657`. Its `app download` command incorrectly starts anonymously even with a saved login. Apply the included compatibility patch before building this revision:
 
 ```bash
-yay -S linux-wallpaperengine-git       # the renderer — a plugin can't install AUR packages
-omarchy plugin add https://github.com/dkgamer02ai/omarchy-wallpaper-engine.git --enable
+git clone https://github.com/UnhingedSoftware/tapline.git
+cd tapline
+git checkout f54136611519bef50cf31336e0c28a78eb175657
+git apply /path/to/omarchy-wallpaper-engine/deps/tapline-owned-apps.patch
+cargo build --release -p tapline-cli
+install -Dm755 target/release/tapline ~/.local/bin/tapline
 ```
 
-**Or from a clone:**
+The patch changes only `Session::anonymous_shared(...)` to `Session::automatic_shared(None, ...)` for app downloads. Newer tapline versions may already include the fix; inspect that call before applying it. tapline stores its own login tokens with restricted file permissions; this plugin never reads them.
+
+Install the Omarchy plugin after dependencies are available:
 
 ```bash
-git clone https://github.com/dkgamer02ai/omarchy-wallpaper-engine.git
-cd omarchy-wallpaper-engine
-./install.sh          # add --no-deps to skip the AUR install
+omarchy plugin add https://github.com/caniswim/omarchy-wallpaper-engine.git --enable
 ```
 
-Either path sets up the same thing: links the `omarchy-we` CLI into `~/.local/bin`, drops a transparent placeholder so Omarchy's background stops covering the live one, adds a Hyprland autostart entry, installs a `theme-set` hook (re-applies the wallpaper after a theme change), and adds the **menu → Style → Wallpaper Engine** entry that opens Omatrix.
+For development, put this repository in the user plugin directory with its manifest ID, enable that plugin, and run `./install.sh --no-deps`. The installer links `omarchy-we` into `~/.local/bin`, adds the Style menu item, installs a theme hook and adds a Hyprland login command. It never changes `/usr/share/omarchy`. Keep the repository in place: the CLI symlink points into it. Back up your user config before installing.
 
-> **Note:** Omarchy has no post-install/-remove hooks, so the plugin's service runs `install.sh` itself the first time the shell loads it. When removing the plugin, run `uninstall.sh` **first** (see [Uninstall](#uninstall)).
+## Use
 
-## Usage
+1. Open **Style → Wallpaper Engine**.
+2. Choose **Steam sign-in**, scan the QR with the Steam mobile app, and approve. The QR expires after five minutes; press Cancel and retry if needed.
+3. Choose **Scene assets** once. Only Wallpaper Engine's `assets` folder is downloaded; no Windows application, executables or web runtime are needed. Videos do not require these shared assets.
+4. Search Workshop, select a tile and choose **Download / update**.
+5. Choose **Apply**. **Library** shows downloaded content; **Stop live wallpaper** restores the previous background and disables login/theme restoration until another wallpaper is applied.
 
-Open **menu → Style → Wallpaper Engine** (or run `omarchy-we omatrix`) to launch **Omatrix**:
+Searches and thumbnails load only when you ask to search. There is no background polling of Steam. You can close the gallery while an operation finishes; use **Cancel** to stop it. Downloads have a one-hour timeout; Steam errors appear in the gallery. Partial downloads stay hidden and can be resumed by retrying the same item.
 
-| Action | Control |
-|---|---|
-| Spin the dial | scroll · `←` `→` · drag |
-| Apply the selected wallpaper | left-click · `Enter` |
-| Cancel | right-click · `Esc` |
-| Stop the live wallpaper | the **⏹ Stop** card (last on the dial) |
+Downloaded wallpapers appear in `~/.local/share/omarchy-we/workshop`, shared assets in `~/.local/share/omarchy-we/engine/assets`, thumbnails in `~/.cache/omarchy-we/previews`, and renderer diagnostics in `~/.local/state/omarchy-we/renderer.log`. Standard XDG data/state/cache locations are honored. Existing Steam Workshop libraries, including paths in Steam's `libraryfolders.vdf`, are also discovered.
 
-> Omatrix needs the plugin install to open. On a plain `./install.sh` (or a non-Omarchy shell) `omarchy-we omatrix` falls back to the native grid picker.
+### Put wallpapers on another disk
 
-Everything is also available from the CLI:
-
-```bash
-omarchy-we list           # list your wallpapers:  #  type  title  id
-omarchy-we set 3          # set by list number…
-omarchy-we set 2555206224 # …by Steam Workshop id…
-omarchy-we set "goku"     # …or by title substring
-omarchy-we omatrix        # open the Omatrix dial (falls back to the grid picker)
-omarchy-we menu           # native Omarchy grid picker (falls back to walker/fuzzel/wofi/rofi)
-omarchy-we next / prev / random
-omarchy-we current        # what's set, and whether it's running
-omarchy-we stop           # stop the live wallpaper, restore a normal background
-```
-
-Your choice is saved to `~/.local/state/omarchy-we/current` and re-applied on every login.
-
-### Keybinding (optional)
-
-Add one of these to `~/.config/hypr/bindings.lua`:
-
-```lua
-o.bind("SUPER + SHIFT + W", "Wallpaper Engine picker", "omarchy-we omatrix")  -- dial
-o.bind("SUPER + SHIFT + W", "Wallpaper Engine picker", "omarchy-we menu")     -- grid
-```
-
-### Tuning
-
-Set these before `omarchy-we` (e.g. in the autostart line):
-
-| Variable | Default | Meaning |
-|----------|---------|---------|
-| `OMARCHY_WE_SCALING` | `fill` | `stretch` \| `fit` \| `fill` \| `default` |
-| `OMARCHY_WE_FPS` | *(unset)* | cap the frame rate (e.g. `30`) to save battery |
-
-## How it works
-
-- `linux-wallpaperengine --silent --screen-root <output> --bg <workshop-folder>` renders the wallpaper on the Hyprland **background** layer (one group per active monitor).
-- Omarchy's Quickshell background is an **opaque** surface on that same layer, so it would hide the live one. We point Omarchy's current background at a **transparent** PNG (`~/.config/omarchy/backgrounds/transparent.png`) and relaunch the wallpaper on top — never editing `/usr/share/omarchy`.
-- The `theme-set` hook re-applies this after a theme change (which otherwise resets the background and restarts the shell).
-- **Omatrix** (`DialPicker.qml`) is a Quickshell `overlay` plugin: a dial of cards fed by `omarchy-we ipc entries`, applying via `omarchy-we set`.
-- `omarchy-we menu` reuses Omarchy's own image selector (`omarchy-menu-images`), caching thumbnails under `~/.cache/omarchy-we/`; without it, it falls back to a `walker`/`fuzzel`/`wofi`/`rofi` menu.
-
-## Integration (IPC) for bars & shell plugins
-
-`omarchy-we` exposes a small, stable interface so a bar or shell can build its own animated-wallpaper picker on top of it, mirroring the familiar `ipc <verb>` shape:
-
-```bash
-omarchy-we ipc version     # JSON capability contract: {"ipc":1,...} — probe this first
-omarchy-we ipc entries     # JSON: every wallpaper (build your own grid/dial from this)
-omarchy-we ipc current     # JSON: the active wallpaper
-omarchy-we ipc set <id>    # apply by Steam Workshop id (or index/title)
-omarchy-we ipc picker      # open the built-in grid picker
-omarchy-we ipc stop        # stop the live wallpaper, restore a static background
-```
-
-**Probe before use:** run `omarchy-we ipc version` and only enable the feature when it exits 0 with a compatible `ipc` contract (currently `1`). `entries`/`current`/`set` exit non-zero (message on stderr) on failure — treat that as an error, not an empty result. The `ipc` number bumps only on a breaking change to these JSON shapes.
-
-`ipc entries` (same as `omarchy-we list --json`):
+Create `~/.config/omarchy-we/settings.json` with an absolute library path and a required mount point:
 
 ```json
-[
-  {
-    "id": "3239853514",
-    "title": "Dragon Ball - Goku Flying Nimbus 4k",
-    "type": "scene",
-    "preview": "/home/you/.local/share/Steam/steamapps/workshop/content/431960/3239853514/preview.gif",
-    "current": false
-  }
-]
+{
+  "library": "/run/media/you/Games/SteamLibrary/steamapps/workshop/content/431960",
+  "required_mount": "/run/media/you/Games"
+}
 ```
 
-`ipc current` (same as `omarchy-we current --json`):
+The library must be inside that mount. The plugin refuses to use an unavailable disk, so it cannot silently fill the system disk underneath an unmounted path. Mount and repair the disk through your system tools first. Shared engine assets remain in the user's data directory. Settings take effect on the next command or gallery reload.
 
-```json
-{ "id": "3239853514", "title": "…", "type": "scene", "preview": "/…/preview.gif", "running": true }
-```
-
-Fields: `id` = Steam Workshop id · `type` = `scene` \| `video` \| `web` · `preview` = absolute path to the wallpaper's own preview image (or `null`) · `current`/`running` = booleans. Render `entries`, and on select call `omarchy-we ipc set <id>`. Output is UTF-8 JSON; the contract is stable.
-
-## Notes & limits
-
-- **Scene** and **video** wallpapers work. **Web** (HTML/JS) wallpapers may not render — `linux-wallpaperengine`'s web support is limited.
-- Live wallpapers use the GPU continuously. On a laptop/iGPU, cap the frame rate (`OMARCHY_WE_FPS=30`) or `omarchy-we stop` on battery.
-- Audio is muted (`--silent`).
-- Multi-monitor: the **same** wallpaper renders on every active monitor.
-
-## Coexisting with a custom bar / shell
-
-This project never edits third-party shell or bar configs (e.g. a Quickshell bar under `~/.config/quickshell/`) — those are usually auto-updating deploys, and editing them just causes merge conflicts. Everything here stays in your own files: `~/.local/bin`, `~/.config/hypr`, `~/.config/omarchy`, `~/.cache/omarchy-we`.
-
-If your bar ships its own **static** wallpaper picker, the two coexist — they write the same Omarchy background, so **last write wins**:
-
-- Pick a live wallpaper here → the background goes transparent and the animation shows through.
-- Pick a **static** image in the other picker → it sets an opaque background that *covers* the live one. The renderer keeps running underneath until you stop it.
-
-To go back to plain static wallpapers, run **`omarchy-we stop`** once; to go live again, use Omatrix.
-
-## Uninstall
-
-**Clone install:**
+### CLI
 
 ```bash
-./uninstall.sh          # removes CLI, hook, autostart, state; restores a normal background
+omarchy-we browse                    # native gallery (menu/omatrix are aliases)
+omarchy-we search "ocean" --page 1 --json
+omarchy-we login                     # terminal QR approval
+omarchy-we account                   # current tapline account (network request)
+omarchy-we assets                    # selective shared assets download
+omarchy-we download 1975950854        # verify app, download and add to library
+omarchy-we list
+omarchy-we set 1975950854             # ID, list index or unambiguous title
+omarchy-we next                      # also prev/random
+omarchy-we stop
+omarchy-we doctor                    # local dependency/assets/current status
+omarchy-we logout                    # forget all saved tapline logins
 ```
 
-**Plugin install** — run the uninstaller from the plugin folder *before* removing the plugin (there's no remove hook), so the autostart line, theme hook, and menu row are cleaned up:
+`OMARCHY_WE_FPS` defaults to `30` (1–240), `OMARCHY_WE_SCALING` defaults to `fill` (`fill`, `fit`, `stretch`, `default`), and `OMARCHY_WE_ASSETS` optionally points to another assets directory. `OMARCHY_WE_WORKSHOP` adds a local library to discovery. `omarchy-we launch` restores only an explicitly saved selection; an empty library never auto-starts a wallpaper.
+
+The compatible JSON IPC commands are `ipc version`, `ipc entries`, `ipc current`, `ipc set ID`, `ipc stop`, `ipc kill`, and `ipc picker`. New direct commands accept `--json`; `login --json` emits newline-delimited QR/completion events. Errors are on stderr with nonzero status. `entries` returns `id/title/type/preview/current/installed`; `preview` is always a local path or null. The original `DialPicker.qml` remains as source reference; all menu aliases now open the searchable gallery.
+
+## Desktop integration and boundaries
+
+One renderer process draws the same wallpaper on every active monitor. Audio is muted. The plugin remembers its PID and Linux process start time, so stopping it cannot kill unrelated linux-wallpaperengine sessions. Startup errors go to the renderer log and do not make the Omarchy background transparent.
+
+While live content plays, Omarchy's background points to the bundled transparent PNG. `owe refresh` lets Omarchy's own video daemon release its previous layer. Stopping restores the previous image/video. A theme change updates that saved background and reapplies the live wallpaper. Choosing another static background covers the live renderer; use **Stop live wallpaper** to release its GPU usage. Renderer compatibility varies by scene; a successful download does not guarantee every effect renders correctly.
+
+Workshop metadata is bounded, titles render as `Text.PlainText`, subprocesses receive argument arrays, and downloaded code is never executed. Search verifies the Wallpaper Engine app ID; downloads verify it separately because tapline's current download CLI does not enforce its APPID argument. Thumbnails are cached from an allowlist of Steam HTTPS hosts with validated redirects, timeouts, size limits and raster signatures. Paths from `project.json` cannot point outside their wallpaper directory. Failed or incomplete downloads do not replace an existing library item.
+
+## Verification and removal
 
 ```bash
-~/.config/omarchy/plugins/io.github.dkgamer02ai.wallpaper-engine/uninstall.sh
-omarchy plugin remove io.github.dkgamer02ai.wallpaper-engine
+python3 -m unittest discover -s tests -v
+python3 -m py_compile bin/omarchy-we
+bash -n install.sh uninstall.sh hooks/50-wallpaper-engine
+omarchy plugin validate .
 ```
 
-Either way, `linux-wallpaperengine` is left installed — remove it with `yay -R linux-wallpaperengine-git` if you want. (If you forget the uninstaller, the menu row hides itself once the CLI is gone, and the `theme-set` hook self-cleans on the next theme change.)
+Tests use a fake tapline executable to assert actual CLI contracts and cover wrong-app rejection, hostile arguments/text, scene asset selection, partial installation visibility, mount guards, preview isolation, process timeouts and stop persistence. Real Steam authentication and renderer compatibility require a signed-in account and an active Hyprland desktop.
 
-## Credits
+Run `./uninstall.sh` **before** removing the plugin with `omarchy plugin remove io.github.dkgamer02ai.wallpaper-engine`. It stops live rendering and removes the CLI link, hook, autostart and menu entry. Wallpapers, shared assets, thumbnail cache, settings, tapline account tokens and installed packages are retained. Run `omarchy-we logout` before uninstalling if you also want to forget tapline logins.
 
-- [Almamu/linux-wallpaperengine](https://github.com/Almamu/linux-wallpaperengine) — the renderer doing the heavy lifting.
-- [Omarchy](https://omarchy.org/) by DHH.
+Based on the original [dkgamer02ai/omarchy-wallpaper-engine](https://github.com/dkgamer02ai/omarchy-wallpaper-engine), with native Workshop integration. MIT licensed; Steam content retains its respective licenses.

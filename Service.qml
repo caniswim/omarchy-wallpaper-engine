@@ -17,9 +17,7 @@ Item {
 
   Process {
     running: true
-    command: ["bash", "-c",
-      'grep -q omarchy-we-menu-start "$HOME/.config/omarchy/extensions/omarchy-menu.jsonc" 2>/dev/null'
-      + ' || bash ' + JSON.stringify(root.pluginDir + "/install.sh") + ' --no-deps']
+    command: ["bash", root.pluginDir + "/install.sh", "--no-deps", "--if-needed"]
     stdout: StdioCollector {
       onStreamFinished: if (text.trim()) console.log("omarchy-we setup:", text.trim())
     }

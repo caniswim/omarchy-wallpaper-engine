@@ -4,3 +4,6 @@
 
 # local personal notes
 memory.md
+
+__pycache__/
+*.pyc

@@ -25,14 +25,25 @@ MENU_EXT="$HOME/.config/omarchy/extensions/omarchy-menu.jsonc"
 # One Style row that opens the picker. `when` hides it if the CLI is gone (a
 # plugin remove leaves a dangling symlink). Stopping lives inside the picker as
 # its last tile, so no separate stop row is needed.
-MENU_ENTRY='  "style.wallpaper-engine": {"icon":"󰸉","label":"Wallpaper Engine","keywords":"live animated video scene we steam workshop omatrix dial","when":"test -x \"$(command -v omarchy-we)\"","action":"omarchy-we omatrix"},'
+MENU_ENTRY='  "style.wallpaper-engine": {"icon":"󰸉","label":"Wallpaper Engine","keywords":"live animated video scene we steam workshop omatrix dial","when":"test -x \"$(command -v omarchy-we)\"","action":"omarchy-we browse"},'
 
 info()  { printf '\033[1;34m::\033[0m %s\n' "$*"; }
 ok()    { printf '\033[1;32m✓\033[0m %s\n'  "$*"; }
 warn()  { printf '\033[1;33m!\033[0m %s\n'  "$*"; }
 
 INSTALL_DEPS=1
-[[ "${1:-}" == "--no-deps" ]] && INSTALL_DEPS=0
+IF_NEEDED=0
+for option in "$@"; do
+  case "$option" in
+    --no-deps) INSTALL_DEPS=0 ;;
+    --if-needed) IF_NEEDED=1 ;;
+    *) echo "Unknown option: $option" >&2; exit 1 ;;
+  esac
+done
+INSTALL_MARKER="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy-we/install-version"
+if [[ $IF_NEEDED -eq 1 && -f "$INSTALL_MARKER" && $(cat "$INSTALL_MARKER") == 2 && -x "$BIN_DST" ]]; then
+  exit 0
+fi
 
 # --- sanity ---------------------------------------------------------------
 command -v omarchy >/dev/null 2>&1 || { echo "This is not an Omarchy system (omarchy CLI not found)."; exit 1; }
@@ -55,6 +66,10 @@ else
   warn "    yay -S linux-wallpaperengine-git"
 fi
 
+for dep in python3 tapline qrencode; do
+  command -v "$dep" >/dev/null 2>&1 || warn "$dep is missing — see README.md for installation."
+done
+
 # --- 2. cli ---------------------------------------------------------------
 info "Installing omarchy-we CLI → $BIN_DST"
 mkdir -p "$(dirname "$BIN_DST")"
@@ -73,6 +88,7 @@ fi
 ok "transparent.png ready"
 
 # --- 4. autostart ---------------------------------------------------------
+mkdir -p "$(dirname "$AUTOSTART")"
 touch "$AUTOSTART"
 if grep -qF 'omarchy-we launch' "$AUTOSTART"; then
   ok "autostart entry already present"
@@ -115,6 +131,8 @@ else
   printf '%s\n' "$MENU_ENTRY"
 fi
 
+mkdir -p "$(dirname "$INSTALL_MARKER")"
+printf '2\n' > "$INSTALL_MARKER"
 echo
 ok "Done. Pick a wallpaper with:"
 echo "     menu > Style > Wallpaper Engine    # thumbnail picker"

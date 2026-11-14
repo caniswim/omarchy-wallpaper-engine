@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "io.github.dkgamer02ai.wallpaper-engine",
   "name": "Wallpaper Engine",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "author": "dkgamer02ai",
   "license": "MIT",
-  "description": "Use Steam Wallpaper Engine wallpapers as live Omarchy wallpapers. Adds menu > Style > Wallpaper Engine, which opens the thumbnail picker.",
+  "description": "Search, download and apply Steam Workshop Scene and Video wallpapers directly in Omarchy.",
   "kinds": [
     "service",
     "overlay"
@@ -13,6 +13,6 @@
   "keepLoaded": true,
   "entryPoints": {
     "service": "Service.qml",
-    "overlay": "DialPicker.qml"
+    "overlay": "Workshop.qml"
   }
 }
